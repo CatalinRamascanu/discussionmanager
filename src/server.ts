@@ -6,9 +6,9 @@ import NotificationService from "./service/NotificationService";
 import Discussion from "./models/Discussion";
 
 const PORT = 3000;
-const discussionManager : DiscussionService = new DiscussionService();
-const authenticationManager : AuthenticationService = new AuthenticationService();
-const notificationManager: NotificationService = new NotificationService();
+const discussionService : DiscussionService = new DiscussionService();
+const authenticationService : AuthenticationService = new AuthenticationService();
+const notificationService: NotificationService = new NotificationService();
 
 const server = net.createServer((socket: net.Socket) => {
     console.log('Client connected');
@@ -24,11 +24,11 @@ const server = net.createServer((socket: net.Socket) => {
 
         switch (command) {
             case 'SIGN_IN':
-                authenticationManager.signIn(sessionId, arg1);
-                notificationManager.addUser(arg1, socket);
+                authenticationService.signIn(sessionId, arg1);
+                notificationService.addUser(arg1, socket);
                 break;
             case 'WHOAMI':
-                username = authenticationManager.whoAmI(sessionId);
+                username = authenticationService.whoAmI(sessionId);
                 if (!username){
                     response += '| Error: Unknown User';
                     break;
@@ -36,33 +36,33 @@ const server = net.createServer((socket: net.Socket) => {
                 response += `|${username}`;
                 break;
             case 'SIGN_OUT':
-                username = authenticationManager.whoAmI(sessionId);
-                authenticationManager.signOut(sessionId);
+                username = authenticationService.whoAmI(sessionId);
+                authenticationService.signOut(sessionId);
                 if (username) {
-                    notificationManager.removeUser(username);
+                    notificationService.removeUser(username);
                 }
                 break;
             case 'CREATE_DISCUSSION':
-                username = authenticationManager.whoAmI(sessionId);
+                username = authenticationService.whoAmI(sessionId);
                 if (!username){
                     response += '| Error: Unknown User';
                     break;
                 }
-                const discussionId = discussionManager.createDiscussion(
+                const discussionId = discussionService.createDiscussion(
                     arg1,
                     username,
                     arg2);
                 response += `|${discussionId}`;
                 break;
             case 'CREATE_REPLY':
-                username = authenticationManager.whoAmI(sessionId);
+                username = authenticationService.whoAmI(sessionId);
                 if (!username) {
                     response += '| Error: Unknown User';
                     socket.write(`${response}\n`);
                     return;
                 }
 
-                discussion = discussionManager.getDiscussionById(arg1);
+                discussion = discussionService.getDiscussionById(arg1);
                 if (discussion) {
                     discussion.createReply(username, arg2);
 
@@ -72,7 +72,7 @@ const server = net.createServer((socket: net.Socket) => {
                     // Step 2: Notify All Participants
                     const participants = discussion.getParticipants();
                     participants.forEach((participant: string) => {
-                        notificationManager.notifyUser(participant, `DISCUSSION_UPDATED|${arg1}\n`);
+                        notificationService.notifyUser(participant, `DISCUSSION_UPDATED|${arg1}\n`);
                     });
                 } else {
                     response += '| Error: Discussion Not Found';
@@ -80,7 +80,7 @@ const server = net.createServer((socket: net.Socket) => {
                 }
                 return;
             case 'GET_DISCUSSION':
-                discussion = discussionManager.getDiscussionById(arg1);
+                discussion = discussionService.getDiscussionById(arg1);
                 if (discussion) {
                     const comments = discussion.formatComments();
                     response += `|${discussion.getId()}|${discussion.getReference()}|(${comments})`;
@@ -89,7 +89,7 @@ const server = net.createServer((socket: net.Socket) => {
                 }
                 break;
             case 'LIST_DISCUSSIONS':
-                const discussions = discussionManager.getDiscussionsByReference(arg1);
+                const discussions = discussionService.getDiscussionsByReference(arg1);
                 if (discussions.length > 0) {
                     const discussionsList = discussions.map(d => {
                         const comments = d.formatComments();
